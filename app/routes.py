@@ -5,12 +5,10 @@ from app.models import User, Role, Permission
 from app.forms import LoginForm, RegisterForm, UserForm
 from app.decorators import role_required, permission_required
 
-# Blueprints
 main_bp = Blueprint('main', __name__)
 auth_bp = Blueprint('auth', __name__)
 admin_bp = Blueprint('admin', __name__)
 
-# ==================== RUTAS PRINCIPALES ====================
 @main_bp.route('/')
 def index():
     return render_template('index.html')
@@ -21,7 +19,6 @@ def index():
 def dashboard():
     return render_template('dashboard.html')
 
-# ==================== RUTAS DE AUTENTICACIÓN ====================
 @auth_bp.route('/login', methods=['GET', 'POST'])
 def login():
     if current_user.is_authenticated:
@@ -55,7 +52,6 @@ def register():
         user = User(username=form.username.data, email=form.email.data)
         user.set_password(form.password.data)
         
-        # Asignar rol de usuario por defecto
         user_role = Role.query.filter_by(name='user').first()
         if user_role:
             user.roles.append(user_role)
@@ -75,7 +71,6 @@ def logout():
     flash('Has cerrado sesión exitosamente.', 'info')
     return redirect(url_for('main.index'))
 
-# ==================== RUTAS DE ADMINISTRACIÓN ====================
 @admin_bp.route('/users')
 @login_required
 @permission_required('view_users')
@@ -92,11 +87,29 @@ def create_user():
     form.roles.choices = [(r.id, r.name) for r in Role.query.all()]
     
     if form.validate_on_submit():
-        user = User(username=form.username.data, email=form.email.data, is_active=form.is_active.data)
+        # Verificar que el username no exista
+        existing_user = User.query.filter_by(username=form.username.data).first()
+        if existing_user:
+            flash('El nombre de usuario ya existe.', 'danger')
+            return render_template('admin/user_form.html', form=form, action='Crear')
+        
+        # Verificar que el email no exista
+        existing_email = User.query.filter_by(email=form.email.data).first()
+        if existing_email:
+            flash('El email ya está registrado.', 'danger')
+            return render_template('admin/user_form.html', form=form, action='Crear')
+        
+        user = User(
+            username=form.username.data, 
+            email=form.email.data, 
+            is_active=form.is_active.data
+        )
+        
         if form.password.data:
             user.set_password(form.password.data)
         else:
-            user.set_password('changeme123')  # Contraseña temporal
+            user.set_password('changeme123')
+            flash('Se asignó la contraseña temporal: changeme123', 'warning')
         
         # Asignar roles
         for role_id in form.roles.data:
@@ -106,10 +119,10 @@ def create_user():
         
         db.session.add(user)
         db.session.commit()
-        flash('Usuario creado exitosamente.', 'success')
+        flash(f'Usuario {user.username} creado exitosamente.', 'success')
         return redirect(url_for('admin.users'))
     
-    return render_template('admin/user_form.html', form=form, action='Crear')
+    return render_template('admin/user_form.html', form=form, action='Crear', user=None)
 
 @admin_bp.route('/users/<int:user_id>/edit', methods=['GET', 'POST'])
 @login_required
@@ -121,14 +134,28 @@ def edit_user(user_id):
     
     if request.method == 'GET':
         form.roles.data = [r.id for r in user.roles]
+        form.is_active.data = user.is_active
     
     if form.validate_on_submit():
+        # Verificar que el username no esté en uso por otro usuario
+        existing_user = User.query.filter(User.username == form.username.data, User.id != user_id).first()
+        if existing_user:
+            flash('El nombre de usuario ya está en uso por otro usuario.', 'danger')
+            return render_template('admin/user_form.html', form=form, action='Editar', user=user)
+        
+        # Verificar que el email no esté en uso por otro usuario
+        existing_email = User.query.filter(User.email == form.email.data, User.id != user_id).first()
+        if existing_email:
+            flash('El email ya está en uso por otro usuario.', 'danger')
+            return render_template('admin/user_form.html', form=form, action='Editar', user=user)
+        
         user.username = form.username.data
         user.email = form.email.data
         user.is_active = form.is_active.data
         
         if form.password.data:
             user.set_password(form.password.data)
+            flash('Contraseña actualizada.', 'info')
         
         # Actualizar roles
         user.roles = []
@@ -138,7 +165,7 @@ def edit_user(user_id):
                 user.roles.append(role)
         
         db.session.commit()
-        flash('Usuario actualizado exitosamente.', 'success')
+        flash(f'Usuario {user.username} actualizado exitosamente.', 'success')
         return redirect(url_for('admin.users'))
     
     return render_template('admin/user_form.html', form=form, action='Editar', user=user)
@@ -152,10 +179,11 @@ def delete_user(user_id):
     if user.id == current_user.id:
         return jsonify({'success': False, 'message': 'No puedes eliminar tu propia cuenta'}), 400
     
+    username = user.username
     db.session.delete(user)
     db.session.commit()
     
-    return jsonify({'success': True, 'message': 'Usuario eliminado exitosamente'})
+    return jsonify({'success': True, 'message': f'Usuario {username} eliminado exitosamente'})
 
 @admin_bp.route('/users/<int:user_id>/toggle-status', methods=['POST'])
 @login_required
