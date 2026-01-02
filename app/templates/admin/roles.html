@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block title %}Gestión de Roles{% endblock %}
+
+{% block content %}
+<div>
+    <h1 class="text-3xl font-bold text-gray-900 mb-8">Gestión de Roles y Permisos</h1>
+    
+    <div class="bg-white shadow rounded-lg p-6">
+        <h2 class="text-xl font-semibold mb-4">Roles del Sistema</h2>
+        
+        <div class="space-y-4">
+            {% for role in roles %}
+            <div class="border border-gray-200 rounded-lg p-4">
+                <div class="flex items-center justify-between mb-2">
+                    <h3 class="text-lg font-semibold text-gray-900">{{ role.name }}</h3>
+                    <span class="text-sm text-gray-500">{{ role.permissions|length }} permisos</span>
+                </div>
+                <p class="text-sm text-gray-600 mb-3">{{ role.description }}</p>
+                <div class="flex flex-wrap gap-2">
+                    {% for permission in role.permissions %}
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                        {{ permission.name }}
+                    </span>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}

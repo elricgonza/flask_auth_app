@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+
+{% block title %}Inicio{% endblock %}
+
+{% block content %}
+<div class="text-center py-12">
+    <h1 class="text-4xl font-bold text-gray-900 mb-4">
+        🔐 Sistema de Gestión de Usuarios
+    </h1>
+    <p class="text-xl text-gray-600 mb-8">
+        Flask + HTMX + Alpine.js + Tailwind CSS
+    </p>
+    
+    {% if current_user.is_authenticated %}
+    <div class="space-x-4">
+        <a href="{{ url_for('main.dashboard') }}" class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
+            Ir al Dashboard
+        </a>
+        <a href="{{ url_for('auth.logout') }}" class="inline-flex items-center px-6 py-3 border border-gray-300 text-base font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+            Cerrar Sesión
+        </a>
+    </div>
+    {% else %}
+    <div class="space-x-4">
+        <a href="{{ url_for('auth.login') }}" class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
+            Iniciar Sesión
+        </a>
+        <a href="{{ url_for('auth.register') }}" class="inline-flex items-center px-6 py-3 border border-gray-300 text-base font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+            Registrarse
+        </a>
+    </div>
+    {% endif %}
+    
+    <div class="mt-16 grid grid-cols-1 gap-8 sm:grid-cols-3 max-w-4xl mx-auto">
+        <div class="bg-white p-6 rounded-lg shadow">
+            <div class="text-blue-600 text-4xl mb-4">🔒</div>
+            <h3 class="text-lg font-semibold mb-2">Autenticación Segura</h3>
+            <p class="text-gray-600">Sistema completo de login con encriptación bcrypt</p>
+        </div>
+        <div class="bg-white p-6 rounded-lg shadow">
+            <div class="text-purple-600 text-4xl mb-4">👥</div>
+            <h3 class="text-lg font-semibold mb-2">Gestión de Roles</h3>
+            <p class="text-gray-600">Control de acceso basado en roles y permisos</p>
+        </div>
+        <div class="bg-white p-6 rounded-lg shadow">
+            <div class="text-green-600 text-4xl mb-4">⚡</div>
+            <h3 class="text-lg font-semibold mb-2">UI Moderna</h3>
+            <p class="text-gray-600">HTMX + Alpine.js + Tailwind CSS</p>
+        </div>
+    </div>
+</div>
+{% endblock %}
