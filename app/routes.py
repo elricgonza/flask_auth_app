@@ -86,18 +86,23 @@ def create_user():
     form = UserForm()
     form.roles.choices = [(r.id, r.name) for r in Role.query.all()]
     
+    # Inicializar roles.data como lista vacía para nuevos usuarios
+    if request.method == 'GET':
+        form.roles.data = []
+        form.is_active.data = True
+    
     if form.validate_on_submit():
         # Verificar que el username no exista
         existing_user = User.query.filter_by(username=form.username.data).first()
         if existing_user:
             flash('El nombre de usuario ya existe.', 'danger')
-            return render_template('admin/user_form.html', form=form, action='Crear')
+            return render_template('admin/user_form.html', form=form, action='Crear', user=None)
         
         # Verificar que el email no exista
         existing_email = User.query.filter_by(email=form.email.data).first()
         if existing_email:
             flash('El email ya está registrado.', 'danger')
-            return render_template('admin/user_form.html', form=form, action='Crear')
+            return render_template('admin/user_form.html', form=form, action='Crear', user=None)
         
         user = User(
             username=form.username.data, 
