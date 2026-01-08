@@ -1,0 +1,119 @@
+<div class="overflow-hidden shadow ring-1 ring-black ring-opacity-5 md:rounded-lg">
+    <table class="min-w-full divide-y divide-gray-300">
+        <thead class="bg-gray-50">
+            <tr>
+                <th scope="col" class="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-6">Usuario</th>
+                <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Email</th>
+                <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Roles</th>
+                <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Estado</th>
+                <th scope="col" class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Fecha Registro</th>
+                <th scope="col" class="relative py-3.5 pl-3 pr-4 sm:pr-6">
+                    <span class="sr-only">Acciones</span>
+                </th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-200 bg-white">
+            {% if users.items %}
+                {% for user in users.items %}
+                <tr id="user-{{ user.id }}">
+                    <td class="whitespace-nowrap py-4 pl-4 pr-3 text-sm sm:pl-6">
+                        <div class="flex items-center">
+                            <div class="h-10 w-10 flex-shrink-0">
+                                <div class="h-10 w-10 rounded-full bg-blue-500 flex items-center justify-center text-white font-semibold">
+                                    {{ user.username[0].upper() }}
+                                </div>
+                            </div>
+                            <div class="ml-4">
+                                <div class="font-medium text-gray-900">{{ user.username }}</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500">{{ user.email }}</td>
+                    <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+                        <div class="flex flex-wrap gap-1">
+                            {% for role in user.roles %}
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                                {{ role.name }}
+                            </span>
+                            {% endfor %}
+                        </div>
+                    </td>
+                    <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+                        {% if current_user.has_permission('edit_users') and user.id != current_user.id %}
+                        <button 
+                            hx-post="{{ url_for('admin.toggle_user_status', user_id=user.id) }}"
+                            hx-swap="none"
+                            class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {% if user.is_active %}bg-green-100 text-green-800 hover:bg-green-200{% else %}bg-red-100 text-red-800 hover:bg-red-200{% endif %} cursor-pointer transition-colors"
+                        >
+                            {% if user.is_active %}Activo{% else %}Inactivo{% endif %}
+                        </button>
+                        {% else %}
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {% if user.is_active %}bg-green-100 text-green-800{% else %}bg-red-100 text-red-800{% endif %}">
+                            {% if user.is_active %}Activo{% else %}Inactivo{% endif %}
+                        </span>
+                        {% endif %}
+                    </td>
+                    <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+                        {{ user.created_at.strftime('%d/%m/%Y') }}
+                    </td>
+                    <td class="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6 space-x-2">
+                        {% if current_user.has_permission('edit_users') %}
+                        <a href="{{ url_for('admin.edit_user', user_id=user.id) }}" class="text-blue-600 hover:text-blue-900">
+                            Editar
+                        </a>
+                        {% endif %}
+                        {% if current_user.has_permission('delete_users') and user.id != current_user.id %}
+                        <button 
+                            @click="userToDelete = {{ user.id }}; userName = '{{ user.username }}'; deleteModal = true"
+                            class="text-red-600 hover:text-red-900"
+                        >
+                            Eliminar
+                        </button>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            {% else %}
+                <tr>
+                    <td colspan="6" class="px-3 py-12 text-center text-sm text-gray-500">
+                        <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <h3 class="mt-2 text-sm font-medium text-gray-900">No se encontraron usuarios</h3>
+                        <p class="mt-1 text-sm text-gray-500">Intenta con otros términos de búsqueda.</p>
+                    </td>
+                </tr>
+            {% endif %}
+        </tbody>
+    </table>
+</div>
+
+{% if users.has_prev or users.has_next %}
+<div class="flex items-center justify-between border-t border-gray-200 bg-white px-4 py-3 sm:px-6 mt-4 rounded-lg">
+    <div class="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
+        <div>
+            <p class="text-sm text-gray-700">
+                Mostrando <span class="font-medium">{{ users.per_page * (users.page - 1) + 1 }}</span> a 
+                <span class="font-medium">{{ [users.per_page * users.page, users.total]|min }}</span> de 
+                <span class="font-medium">{{ users.total }}</span> resultados
+            </p>
+        </div>
+        <div>
+            <nav class="isolate inline-flex -space-x-px rounded-md shadow-sm">
+                {% if users.has_prev %}
+                <a href="{{ url_for('admin.users', page=users.prev_num, search=search) }}" 
+                   hx-get="{{ url_for('admin.users', page=users.prev_num, search=search) }}"
+                   hx-target="#users-container"
+                   class="relative inline-flex items-center rounded-l-md border border-gray-300 bg-white px-2 py-2 text-sm font-medium text-gray-500 hover:bg-gray-50">Anterior</a>
+                {% endif %}
+                {% if users.has_next %}
+                <a href="{{ url_for('admin.users', page=users.next_num, search=search) }}"
+                   hx-get="{{ url_for('admin.users', page=users.next_num, search=search) }}"
+                   hx-target="#users-container"
+                   class="relative inline-flex items-center rounded-r-md border border-gray-300 bg-white px-2 py-2 text-sm font-medium text-gray-500 hover:bg-gray-50">Siguiente</a>
+                {% endif %}
+            </nav>
+        </div>
+    </div>
+</div>
+{% endif %}

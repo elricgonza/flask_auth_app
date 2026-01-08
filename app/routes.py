@@ -1,5 +1,6 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify
 from flask_login import login_user, logout_user, login_required, current_user
+from sqlalchemy import or_
 from app import db
 from app.models import User, Role, Permission
 from app.forms import LoginForm, RegisterForm, UserForm
@@ -76,8 +77,30 @@ def logout():
 @permission_required('view_users')
 def users():
     page = request.args.get('page', 1, type=int)
-    users = User.query.paginate(page=page, per_page=10, error_out=False)
-    return render_template('admin/users.html', users=users)
+    search = request.args.get('search', '', type=str)
+    
+    # Construir query base
+    query = User.query
+    
+    # Aplicar filtro de búsqueda si existe
+    if search:
+        search_filter = or_(
+            User.username.ilike(f'%{search}%'),
+            User.email.ilike(f'%{search}%')
+        )
+        query = query.filter(search_filter)
+    
+    # Ordenar por fecha de creación descendente
+    query = query.order_by(User.created_at.desc())
+    
+    # Paginar resultados
+    users = query.paginate(page=page, per_page=10, error_out=False)
+    
+    # Si es una petición HTMX, solo devolver la tabla
+    if request.headers.get('HX-Request'):
+        return render_template('admin/users_table.html', users=users, search=search)
+    
+    return render_template('admin/users.html', users=users, search=search)
 
 @admin_bp.route('/users/create', methods=['GET', 'POST'])
 @login_required
@@ -86,19 +109,16 @@ def create_user():
     form = UserForm()
     form.roles.choices = [(r.id, r.name) for r in Role.query.all()]
     
-    # Inicializar roles.data como lista vacía para nuevos usuarios
     if request.method == 'GET':
         form.roles.data = []
         form.is_active.data = True
     
     if form.validate_on_submit():
-        # Verificar que el username no exista
         existing_user = User.query.filter_by(username=form.username.data).first()
         if existing_user:
             flash('El nombre de usuario ya existe.', 'danger')
             return render_template('admin/user_form.html', form=form, action='Crear', user=None)
         
-        # Verificar que el email no exista
         existing_email = User.query.filter_by(email=form.email.data).first()
         if existing_email:
             flash('El email ya está registrado.', 'danger')
@@ -116,7 +136,6 @@ def create_user():
             user.set_password('changeme123')
             flash('Se asignó la contraseña temporal: changeme123', 'warning')
         
-        # Asignar roles
         for role_id in form.roles.data:
             role = Role.query.get(role_id)
             if role:
@@ -142,13 +161,11 @@ def edit_user(user_id):
         form.is_active.data = user.is_active
     
     if form.validate_on_submit():
-        # Verificar que el username no esté en uso por otro usuario
         existing_user = User.query.filter(User.username == form.username.data, User.id != user_id).first()
         if existing_user:
             flash('El nombre de usuario ya está en uso por otro usuario.', 'danger')
             return render_template('admin/user_form.html', form=form, action='Editar', user=user)
         
-        # Verificar que el email no esté en uso por otro usuario
         existing_email = User.query.filter(User.email == form.email.data, User.id != user_id).first()
         if existing_email:
             flash('El email ya está en uso por otro usuario.', 'danger')
@@ -162,7 +179,6 @@ def edit_user(user_id):
             user.set_password(form.password.data)
             flash('Contraseña actualizada.', 'info')
         
-        # Actualizar roles
         user.roles = []
         for role_id in form.roles.data:
             role = Role.query.get(role_id)
